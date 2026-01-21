@@ -246,7 +246,7 @@ class EnglishWikiFetcher:
                 image_name = image_name.strip()
 
                 # Validate it's an actual image file
-                if image_name and re.search(r'\.(jpg|jpeg|png|gif|svg)$', image_name, re.IGNORECASE):
+                if image_name and re.search(r'\.(jpg|jpeg|png|gif|svg|webp)$', image_name, re.IGNORECASE):
                     return image_name
 
         return None
@@ -287,6 +287,7 @@ class ArticleBuilder:
 # ROLE: SENIOR MEDIAWIKI ARCHITECT (UZBEKISTAN NATIONAL ENCYCLOPEDIA)
 
 You are a PROFESSIONAL COMPUTATIONAL LINGUIST specializing in High-Level Academic Uzbek.
+Your goal is to produce EXACTLY 3 sentences of native, natural-sounding, and high-quality Uzbek prose.
 
 ## 🏛️ MODULE 1: THE PERFECT UZBEK INFOBOX (BILGIQUTI)
 You MUST map all English data to the official 'Bilgiquti aholi punkti' template.
@@ -373,6 +374,7 @@ EXACT TEMPLATE START:
    - Use "tashkil etmoq" or "vujudga kelgan" for historical facts.
    - Use "maʼlumotlarga koʻra" when citing population.
    - Use "maʼmuriy-hududiy birlik" for administrative status.
+   - Use "mavjud" or "aniqlangan" for status-related facts.
 4. **THE ORTHOGRAPHY SHIELD:** Use U+02BB modifier for oʻ and gʻ. Ensure "oʻz" is correct.
 5. **CONCISENESS:**
    - Sentence 1: Definition + Precise location + Administrative hierarchy.
@@ -416,7 +418,8 @@ EXACT TEMPLATE START:
 - mintaqa: {maʼlumotlar.get('mintaqa', 'N/A')}
 - tuman: {maʼlumotlar.get('tuman', 'N/A')}
 - aholi: {maʼlumotlar.get('aholi', 'N/A')}
-- maydon: {maʼlumotlar.get('maydon', 'N/A')} km²
+- maydon: {maʼlumotlar.get('maydon', 'N/A')}
+- balandlik: {maʼlumotlar.get('balandlik', 'N/A')}
 - koordinatalar: {maʼlumotlar.get('koordinatalar', 'N/A')}
 - pochta indekslari: {maʼlumotlar.get('pochta_indekslari', 'N/A')}
 - tasvir: {tasvir_nomi if tasvir_nomi else 'N/A'}
@@ -431,12 +434,12 @@ ENGLISH WIKITEXT (CONTAINS {ref_count} REFERENCES):
 
 ---
 
-EXECUTION:
-1. Generate the article according to PROTOCOL V28.0 and V29.0.
-2. Ensure ALL {ref_count} references are preserved.
-3. Use the mapping: name -> nomi, settlement_type -> mavqe, subdivision_name -> mamlakat, subdivision_name1 -> mintaqa, subdivision_name2 -> tuman.
-4. Set `| tasvir = {tasvir_nomi if tasvir_nomi else ''}` in the infobox.
-5. Add [[Turkum:{Config.COUNTRY_NAME} aholi punktlari]] at the end.
+EXECUTION RULES (STRICT):
+1. **INFOBOX DATA TYPE:** For `maydon`, `aholi`, `AP markazi balandligi`, `lat_deg`, `lon_deg`, etc. use ONLY raw numbers. DO NOT add "km²", "m", or "kishi".
+2. **TIMEZONES:** Use `| vaqt mintaqasi = +1` and `| DST = +2` for Poland. DO NOT use "CET" or "CEST".
+3. **REFERENCES:** Preserve ALL {ref_count} <ref> tags. If {ref_count} is 0, create a single reference citing the English Wikipedia or Wikidata as source using `{{{{Cite web}}}}`.
+4. **PROSE:** EXACTLY 3 sentences of high-level academic Uzbek. No preamble.
+5. **CATEGORIES:** Add [[Turkum:{Config.COUNTRY_NAME} aholi punktlari]] at the very end.
 
 OUTPUT RAW WIKITEXT ONLY.
 
@@ -529,10 +532,10 @@ class WikidataExtractor:
                 'balandlik': elev,
                 'pochta_indekslari': postal,
                 'koordinatalar': koordinatalar,
-                'lat_deg': int(coords_lat) if coords_lat else None,
-                'lat_min': int((abs(coords_lat) - abs(int(coords_lat))) * 60) if coords_lat else None,
-                'lon_deg': int(coords_lon) if coords_lon else None,
-                'lon_min': int((abs(coords_lon) - abs(int(coords_lon))) * 60) if coords_lon else None,
+                'lat_deg': int(coords_lat) if coords_lat is not None else None,
+                'lat_min': int((abs(coords_lat) - abs(int(coords_lat))) * 60) if coords_lat is not None else None,
+                'lon_deg': int(coords_lon) if coords_lon is not None else None,
+                'lon_min': int((abs(coords_lon) - abs(int(coords_lon))) * 60) if coords_lon is not None else None,
             }
 
         except Exception as e:
