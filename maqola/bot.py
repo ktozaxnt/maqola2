@@ -1,13 +1,12 @@
-       #!/usr/bin/python3
+#!/usr/bin/python3
 # -*- coding: utf-8 -*-
 """
 ========================================
 UZBEK WIKIPEDIA BOT - LINGUISTIC EXCELLENCE
 ========================================
-Version: 25.0 (ORTHOGRAPHY + REFERENCE PRESERVATION)
+Version: 30.0 (OPENROUTER + LEAD-ONLY + POLAND)
 Purpose: Production-grade Wikipedia article generation
 Target: uz.wikipedia.org
-Compliance: Stuttgart Quality Standard
 ========================================
 """
 
@@ -19,14 +18,11 @@ import sys
 import re
 import logging
 import time
+import requests
+import json
 from typing import Optional, Tuple, Dict, Any, List
 from datetime import datetime
 from pathlib import Path
-
-from azure.ai.inference import ChatCompletionsClient
-from azure.ai.inference.models import SystemMessage, UserMessage
-from azure.core.credentials import AzureKeyCredential
-from azure.core.exceptions import HttpResponseError
 
 # ==========================================
 # 🔧 CONFIGURATION
@@ -40,29 +36,29 @@ class Config:
     COUNTRY_NAME = 'Polsha'
     MAX_ARTICLES = 1
 
-    GITHUB_TOKEN = "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"
-    GITHUB_ENDPOINT = "https://models.github.ai/inference"
-    AI_MODEL = "meta/Llama-4-Scout-17B-16E-Instruct"
+    OPENROUTER_API_KEY = "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"
+    OPENROUTER_ENDPOINT = "https://openrouter.ai/api/v1/chat/completions"
+    AI_MODEL = "deepseek/deepseek-r1"
 
     TEMPERATURE = 0.2
     TOP_P = 0.95
-    MAX_TOKENS = 8000
+    MAX_TOKENS = 4000
 
-    MAX_RETRIES = 12
-    INITIAL_RETRY_DELAY = 30
-    MAX_RETRY_DELAY = 120
-    RATE_LIMIT_DELAY = 60
+    MAX_RETRIES = 5
+    INITIAL_RETRY_DELAY = 10
+    MAX_RETRY_DELAY = 60
+    RATE_LIMIT_DELAY = 30
 
-    EDIT_DELAY = 50
-    REQUEST_TIMEOUT = 180
+    EDIT_DELAY = 10
+    REQUEST_TIMEOUT = 120
 
     LOG_DIR = Path("logs")
     LOG_FILE = LOG_DIR / f"bot_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
 
     @classmethod
     def validate(cls):
-        if not cls.GITHUB_TOKEN or not cls.GITHUB_TOKEN.startswith("github_pat_"):
-            raise ValueError("⚠️ CRITICAL: Invalid GitHub token")
+        if not cls.OPENROUTER_API_KEY or not cls.OPENROUTER_API_KEY.startswith("sk-or-"):
+            raise ValueError("⚠️ CRITICAL: Invalid OpenRouter API key")
         cls.LOG_DIR.mkdir(exist_ok=True)
 
 # ==========================================
@@ -100,93 +96,50 @@ logger = BotLogger()
 # 🔤 UZBEK ORTHOGRAPHY PROCESSOR
 # ==========================================
 class UzbekOrthographyFixer:
-    """
-    CRITICAL MODULE: Fixes Uzbek Latin script diacritics
-    Converts incorrect apostrophes to proper Unicode modifier letter (U+02BB)
-    """
+    """Fixes Uzbek Latin script diacritics using U+02BB modifier"""
 
-    # The CORRECT Uzbek modifier letter turning comma
     CORRECT_MODIFIER = 'ʻ'  # U+02BB
 
-    # Common incorrect representations
-    WRONG_PATTERNS = [
-        "'",   # ASCII apostrophe
-        "'",   # Right single quotation mark
-        "`",   # Grave accent
-        "ʼ",   # U+02BC modifier letter apostrophe
-        "′",   # Prime symbol
-    ]
+    WRONG_PATTERNS = ["'", "'", "`", "ʼ", "′"]
 
     @classmethod
     def fix_orthography(cls, text: str) -> str:
-        """
-        Apply comprehensive Uzbek orthography fixes
-        Priority: oʻ, gʻ letter pairs
-        """
         if not text:
             return text
 
-        logger.debug("🔤 Applying Uzbek orthography corrections...")
-
-        original_text = text
-
-        # STAGE 1: Fix o' combinations
-        # Pattern: o followed by any wrong apostrophe
+        # Priority: oʻ, gʻ letter pairs
         for wrong in cls.WRONG_PATTERNS:
             text = text.replace(f"o{wrong}", f"o{cls.CORRECT_MODIFIER}")
             text = text.replace(f"O{wrong}", f"O{cls.CORRECT_MODIFIER}")
-
-        # STAGE 2: Fix g' combinations
-        for wrong in cls.WRONG_PATTERNS:
             text = text.replace(f"g{wrong}", f"g{cls.CORRECT_MODIFIER}")
             text = text.replace(f"G{wrong}", f"G{cls.CORRECT_MODIFIER}")
 
-        # STAGE 3: Common Uzbek words - ensure correctness
-        uzbek_words = {
-            r'\bo\'': f'bo{cls.CORRECT_MODIFIER}',
-            r'\bg\'': f'g{cls.CORRECT_MODIFIER}',
-            r'\bO\'': f'O{cls.CORRECT_MODIFIER}',
-            r'\bG\'': f'G{cls.CORRECT_MODIFIER}',
-        }
-
-        for pattern, replacement in uzbek_words.items():
-            text = re.sub(pattern, replacement, text)
-
-        # STAGE 4: Fix within common Uzbek terms
+        # Common word fixes
         critical_fixes = {
             "oʼzbek": f"o{cls.CORRECT_MODIFIER}zbek",
             "Oʼzbek": f"O{cls.CORRECT_MODIFIER}zbek",
             "boʼlgan": f"bo{cls.CORRECT_MODIFIER}lgan",
             "gʼarbiy": f"g{cls.CORRECT_MODIFIER}arbiy",
-            "joʼlashgan": f"jo{cls.CORRECT_MODIFIER}lashgan",
-            "shaʼrida": f"sha{cls.CORRECT_MODIFIER}rida",
+            "o'z": f"o{cls.CORRECT_MODIFIER}z",
+            "O'z": f"O{cls.CORRECT_MODIFIER}z",
         }
 
         for wrong, correct in critical_fixes.items():
             text = text.replace(wrong, correct)
 
-        if text != original_text:
-            logger.debug("✅ Orthography corrections applied")
-
         return text
 
 # ==========================================
-# 🌐 ENGLISH WIKIPEDIA FETCHER (ENHANCED)
+# 🌐 ENGLISH WIKIPEDIA FETCHER (LEAD ONLY)
 # ==========================================
 class EnglishWikiFetcher:
-    """Fetches COMPLETE raw wikitext + extracts images"""
+    """Fetches lead section wikitext + extracts images"""
 
     @staticmethod
-    def get_full_wikitext(item: Any) -> Tuple[Optional[str], Optional[str], Optional[str]]:
-        """
-        Fetch COMPLETE raw wikitext AND extract main image
-        Returns: (wikitext, title, image_filename)
-        """
+    def get_lead_wikitext(item: Any) -> Tuple[Optional[str], Optional[str], Optional[str]]:
         try:
             sitelinks = item.sitelinks
-
             if 'enwiki' not in sitelinks:
-                logger.debug(f"No enwiki sitelink for {item.id}")
                 return None, None, None
 
             enwiki_link = sitelinks['enwiki']
@@ -196,36 +149,30 @@ class EnglishWikiFetcher:
             page = pywikibot.Page(site, title)
 
             if not page.exists():
-                logger.warning(f"English article '{title}' does not exist")
                 return None, None, None
 
-            # Get COMPLETE raw wikitext
-            raw_wikitext = page.text
-
-            if not raw_wikitext or len(raw_wikitext.strip()) < 100:
-                logger.warning(f"English article '{title}' has insufficient content")
+            full_text = page.text
+            if not full_text or len(full_text.strip()) < 100:
                 return None, None, None
 
-            # EXTRACT IMAGE from infobox
-            image_filename = EnglishWikiFetcher._extract_image(raw_wikitext)
+            # Extract LEAD section (before first section header ==)
+            lead_text = full_text.split('==')[0].strip()
 
-            logger.debug(f"✅ Fetched wikitext for '{title}' ({len(raw_wikitext)} chars)")
-            if image_filename:
-                logger.debug(f"📸 Found image: {image_filename}")
+            # Fallback if lead split is too short
+            raw_wikitext = lead_text if len(lead_text) > 100 else full_text
 
+            # EXTRACT IMAGE
+            image_filename = EnglishWikiFetcher._extract_image(full_text)
+
+            logger.debug(f"✅ Fetched lead for '{title}' ({len(raw_wikitext)} chars)")
             return raw_wikitext, title, image_filename
 
         except Exception as e:
-            logger.error(f"Error fetching English wikitext: {type(e).__name__}: {e}")
+            logger.error(f"Error fetching English wikitext: {e}")
             return None, None, None
 
     @staticmethod
     def _extract_image(wikitext: str) -> Optional[str]:
-        """
-        Extract main image from English infobox
-        Searches for: image_skyline, image, image_photo, photo
-        """
-        # Patterns to search for image parameters in infoboxes
         image_patterns = [
             r'\|\s*image_skyline\s*=\s*([^\|\n]+)',
             r'\|\s*image\s*=\s*([^\|\n]+)',
@@ -237,553 +184,215 @@ class EnglishWikiFetcher:
             match = re.search(pattern, wikitext, re.IGNORECASE)
             if match:
                 image_name = match.group(1).strip()
-
-                # Clean up the image name: remove File:, Image:, Fayl:
                 image_name = re.sub(r'\[\[(?:File|Image|Fayl):', '', image_name, flags=re.IGNORECASE)
                 image_name = re.sub(r'(?:File|Image|Fayl):', '', image_name, flags=re.IGNORECASE)
                 image_name = re.sub(r'\]\].*$', '', image_name)
                 image_name = re.sub(r'\|.*$', '', image_name)
                 image_name = image_name.strip()
 
-                # Validate it's an actual image file
                 if image_name and re.search(r'\.(jpg|jpeg|png|gif|svg|webp)$', image_name, re.IGNORECASE):
                     return image_name
-
         return None
 
 # ==========================================
 # 🧹 TEXT SANITIZER
 # ==========================================
 class TextSanitizer:
-    """Minimal sanitization - preserve wikitext structure"""
-
     @staticmethod
     def clean(text: str) -> str:
-        if not text:
-            return ""
-
-        # Remove ONLY AI meta-commentary, preserve ALL wikitext
+        if not text: return ""
         text = re.sub(r'<think>.*?</think>', '', text, flags=re.DOTALL | re.IGNORECASE)
-        text = re.sub(r'<thinking>.*?</thinking>', '', text, flags=re.DOTALL | re.IGNORECASE)
-
-        # Remove code fences if AI added them
         text = re.sub(r'^```[a-z]*\n', '', text, flags=re.MULTILINE | re.IGNORECASE)
         text = re.sub(r'\n```$', '', text, flags=re.MULTILINE)
-        text = text.strip('`')
-
-        # Remove "Here is..." type preambles
-        text = re.sub(r'^(Here is|Here\'s|Below is|The translated).*?:?\s*\n+', '', text, flags=re.IGNORECASE)
-
-        text = text.strip()
-        return text
+        return text.strip('`').strip()
 
 # ==========================================
-# 🤖 ARTICLE BUILDER - ACADEMIC UZBEK SYNTHESIS
+# 🤖 ARTICLE BUILDER - ACADEMIC UZBEK
 # ==========================================
 class ArticleBuilder:
-    """Generates articles with STRICT reference preservation and academic grammar"""
+    """Generates articles with OpenRouter and Lead-only logic"""
 
-    SYSTEM_PROMPT = """# 🚨 PROTOCOL: UZBEK WIKIPEDIA SUPREMACY (V28.0)
-# ROLE: SENIOR MEDIAWIKI ARCHITECT (UZBEKISTAN NATIONAL ENCYCLOPEDIA)
+    SYSTEM_PROMPT = """# 🚨 PROTOCOL: UZBEK WIKIPEDIA SUPREMACY (V30.0)
+# ROLE: SENIOR MEDIAWIKI ARCHITECT
 
-You are a PROFESSIONAL COMPUTATIONAL LINGUIST specializing in High-Level Academic Uzbek.
-Your goal is to produce EXACTLY 3 sentences of native, natural-sounding, and high-quality Uzbek prose.
+You are a PROFESSIONAL LINGUIST specializing in Academic Uzbek.
+Your goal is to produce EXACTLY 3 sentences of high-quality, native synthesis based on the provided English lead section.
 
-## 🏛️ MODULE 1: THE PERFECT UZBEK INFOBOX (BILGIQUTI)
-You MUST map all English data to the official 'Bilgiquti aholi punkti' template.
-EXACT TEMPLATE START:
-{{Bilgiquti aholi punkti
-| mavqe                      =
-| nomi                       =
-| asl nomi                   =
-| tasvir                     =
-| qaram                      =
-| mamlakat                   =
-| gerb                       =
-| bayroq                     =
-| gerb tarifi                =
-| bayroq tarifi              =
-| gerb eni                   =
-| bayroq eni                 =
-| lat_dir = | lat_deg = | lat_min = | lat_sec =
-| lon_dir = | lon_deg = | lon_min = | lon_sec =
-| CoordAddon                 =
-| CoordScale                 =
-| mamlakat xaritasi oʻlchami =
-| mintaqa xaritasi oʻlchami  =
-| tuman xaritasi oʻlchami    =
-| mintaqa turi               =
-| mintaqa                    =
-| jadvalda mintaqa           =
-| tuman turi                 =
-| tuman                      =
-| tuman 2                    =
-| tuman 3                    =
-| tuman 4                    =
-| tuman 5                    =
-| jadvalda tuman             =
-| jadvalda tuman 2           =
-| jadvalda tuman 3           =
-| jadvalda tuman 4           =
-| jadvalda tuman 5           =
-| jamoat turi                =
-| jamoat                     =
-| jadvalda jamoat            =
-| ichki bolinishi            =
-| rahbar turi                =
-| rahbar                     =
-| asos solingan              =
-| ilk eslatilishi            =
-| avvalgi nomlari            =
-| qachondan beri             =
-| maydon                     =
-| balandlik turi             =
-| AP markazi balandligi      =
-| iqlim                      =
-| rasmiy til                 =
-| aholi                      =
-| sanalgan yil               =
-| zichlik                    =
-| aglomeratsiya              =
-| milliy tarkib              =
-| konfessiyaviy tarkib       =
-| etnoxoronim                =
-| vaqt mintaqasi             =
-| DST                        =
-| telefon kodi               =
-| pochta indekslari          =
-| avtomobil kodi             =
-| identifikator turi         =
-| raqamli identifikator      =
-| vebsayt                    =
-| sayt tili                  =
-}}
+## 🏛️ MODULE 1: THE INFOBOX (BILGIQUTI)
+Use {{Bilgiquti aholi punkti}} template. Map data precisely.
+Rules:
+- maydon, aholi, AP markazi balandligi: Raw numbers ONLY.
+- Timezones for Poland: vaqt mintaqasi = +1, DST = +2.
 
 ## 🔬 MODULE 2: PROSE & LINGUISTICS
-- **First Sentence:** '''{nomi}''' — [description in Academic Uzbek].
-- **References:** Every fact MUST have a <ref> tag. Preserve ALL <ref> tags from English source.
-- **Orthography:** Ensure oʻ and gʻ use the correct Unicode modifier (U+02BB).
-- **No Chatter:** Output ONLY the RAW MediaWiki source code.
-
-# ✍️ MODULE: ACADEMIC UZBEK SYNTHESIS (V29.0)
-## 🏛️ LINGUISTIC COMMANDS (STRICT):
-1. **TERMINATION:** Every article MUST start with the "Punctuation-Dash" definition style:
-   - FORMAT: '''{nomi}''' — [Location/Administrative status] tarkibiga kiruvchi [Entity type]dir.
-2. **SYNTAX (SOV):** The verb must be the LAST word.
-3. **DICTIONARY CONTROL:**
-   - Use "tashkil etmoq" or "vujudga kelgan" for historical facts.
-   - Use "maʼlumotlarga koʻra" when citing population.
-   - Use "maʼmuriy-hududiy birlik" for administrative status.
-   - Use "mavjud" or "aniqlangan" for status-related facts.
-4. **THE ORTHOGRAPHY SHIELD:** Use U+02BB modifier for oʻ and gʻ. Ensure "oʻz" is correct.
-5. **CONCISENESS:**
-   - Sentence 1: Definition + Precise location + Administrative hierarchy.
-   - Sentence 2: Key historical fact.
-   - Sentence 3: Current status or demographic highlight with <ref>.
+- Sentence 1: '''{nomi}''' — [Administrative status] tarkibiga kiruvchi [Entity type]dir.
+- Sentence 2: Historical context or founding.
+- Sentence 3: Demographic or current status highlight.
+- Grammar: SOV (Verb at end). Orthography: oʻ, gʻ (U+02BB).
+- References: Preserve ALL <ref> tags from the source in their exact positions.
 
 ## 🧹 MODULE 3: SYSTEM INTEGRITY
-- DELETE non-existent templates like {{Authority control}} or {{TERYT}}.
-- Keep ONLY working references.
-- Place Categories at the absolute bottom."""
+- MANDATORY section: == Manbalar == with {{manbalar}}.
+- If source has NO <ref> tags, add this line under == Manbalar ==:
+  "Ushbu maqola inglizcha Vikipediyadagi [URL] maqolasi asosida yaratildi."
+- Category: ONLY [[Turkum:Polsha aholi punktlari]].
+- Output RAW MediaWiki only. NO chatter."""
 
     def __init__(self):
-        try:
-            self.client = ChatCompletionsClient(
-                endpoint=Config.GITHUB_ENDPOINT,
-                credential=AzureKeyCredential(Config.GITHUB_TOKEN)
-            )
-            logger.info(f"✅ GitHub Models initialized: {Config.AI_MODEL}")
-        except Exception as e:
-            logger.critical(f"Failed to initialize AI client: {e}")
-            raise
+        self.endpoint = Config.OPENROUTER_ENDPOINT
+        self.headers = {
+            "Authorization": f"Bearer {Config.OPENROUTER_API_KEY}",
+            "Content-Type": "application/json",
+            "HTTP-Referer": "https://github.com/DanikBotUZ",
+            "X-Title": "UzbekWikiBot",
+        }
+        logger.info(f"✅ OpenRouter initialized: {Config.AI_MODEL}")
 
-    def build_article(self,
-                      maʼlumotlar: Dict[str, Any],
-                      manba_matni: str,
-                      manba_nomi: str,
-                      tasvir_nomi: Optional[str] = None) -> Optional[str]:
-        """Generate COMPLETE article from source data"""
-
+    def build_article(self, maʼlumotlar: Dict[str, Any], manba_matni: str, manba_nomi: str, tasvir_nomi: Optional[str] = None) -> Optional[str]:
         nomi = maʼlumotlar['nomi']
-
-        # Count references for validation
         ref_count = len(re.findall(r'<ref[^>]*>.*?</ref>', manba_matni, re.DOTALL))
-        logger.info(f"📚 Source has {ref_count} references to preserve")
 
-        # Build context using UZBEK parameter names
-        context_data = f"""WIKIDATA CONTEXT (UZBEK MAPPING):
-- nomi: {nomi}
-- mavqe: {maʼlumotlar.get('mavqe', 'aholi punkti')}
-- mamlakat: {maʼlumotlar.get('mamlakat', Config.COUNTRY_NAME)}
-- mintaqa: {maʼlumotlar.get('mintaqa', 'N/A')}
-- tuman: {maʼlumotlar.get('tuman', 'N/A')}
-- aholi: {maʼlumotlar.get('aholi', 'N/A')}
-- maydon: {maʼlumotlar.get('maydon', 'N/A')}
-- balandlik: {maʼlumotlar.get('balandlik', 'N/A')}
-- koordinatalar: {maʼlumotlar.get('koordinatalar', 'N/A')}
-- pochta indekslari: {maʼlumotlar.get('pochta_indekslari', 'N/A')}
-- tasvir: {tasvir_nomi if tasvir_nomi else 'N/A'}
-"""
+        context_data = f"""WIKIDATA: nomi: {nomi}, mavqe: {maʼlumotlar.get('mavqe')}, mintaqa: {maʼlumotlar.get('mintaqa')}, tuman: {maʼlumotlar.get('tuman')}, aholi: {maʼlumotlar.get('aholi')}, maydon: {maʼlumotlar.get('maydon')}, balandlik: {maʼlumotlar.get('balandlik')}, koordinatalar: {maʼlumotlar.get('koordinatalar')}, tasvir: {tasvir_nomi}"""
 
-        user_prompt = f"""{context_data}
+        user_prompt = f"""{context_data}\n\nSOURCE URL: https://en.wikipedia.org/wiki/{manba_nomi.replace(' ', '_')}\n\nENGLISH LEAD (REF COUNT: {ref_count}):\n{manba_matni}\n\nEXECUTION: Generate 3 sentences. Preserve refs. Use Category [[Turkum:Polsha aholi punktlari]]."""
 
-SOURCE: en.wikipedia.org/wiki/{manba_nomi.replace(' ', '_')}
-
-ENGLISH WIKITEXT (CONTAINS {ref_count} REFERENCES):
-{manba_matni}
-
----
-
-EXECUTION RULES (STRICT):
-1. **INFOBOX DATA TYPE:** For `maydon`, `aholi`, `AP markazi balandligi`, `lat_deg`, `lon_deg`, etc. use ONLY raw numbers. DO NOT add "km²", "m", or "kishi".
-2. **TIMEZONES:** Use `| vaqt mintaqasi = +1` and `| DST = +2` for Poland. DO NOT use "CET" or "CEST".
-3. **REFERENCES:** Preserve ALL {ref_count} <ref> tags. If {ref_count} is 0, create a single reference citing the English Wikipedia or Wikidata as source using `{{{{Cite web}}}}`.
-4. **PROSE:** EXACTLY 3 sentences of high-level academic Uzbek. No preamble.
-5. **CATEGORIES:** Add [[Turkum:{Config.COUNTRY_NAME} aholi punktlari]] at the very end.
-
-OUTPUT RAW WIKITEXT ONLY.
-
-BEGIN:"""
-
-        logger.info(f"🤖 Generating article via {Config.AI_MODEL}...")
-        result = self._call_api_with_retry(user_prompt)
+        logger.info(f"🤖 Generating via {Config.AI_MODEL}...")
+        result = self._call_api(user_prompt)
 
         if result:
             cleaned = TextSanitizer.clean(result)
             fixed = UzbekOrthographyFixer.fix_orthography(cleaned)
-            uzbek_ref_count = len(re.findall(r'<ref[^>]*>.*?</ref>', fixed, re.DOTALL))
-
-            if uzbek_ref_count < ref_count:
-                logger.warning(f"⚠️ Reference loss: {ref_count} → {uzbek_ref_count}")
-            else:
-                logger.info(f"✅ All {uzbek_ref_count} references preserved")
-
             return fixed
-
-        logger.error("❌ Generation failed")
         return None
 
-    def _call_api_with_retry(self, user_prompt: str) -> Optional[str]:
-        """Call API with exponential backoff"""
-        retry_delay = Config.INITIAL_RETRY_DELAY
+    def _call_api(self, user_prompt: str) -> Optional[str]:
         for attempt in range(1, Config.MAX_RETRIES + 1):
             try:
-                if attempt > 1:
-                    time.sleep(retry_delay)
-                response = self.client.complete(
-                    messages=[
-                        SystemMessage(content=self.SYSTEM_PROMPT),
-                        UserMessage(content=user_prompt)
-                    ],
-                    temperature=Config.TEMPERATURE,
-                    top_p=Config.TOP_P,
-                    max_tokens=Config.MAX_TOKENS,
-                    model=Config.AI_MODEL
-                )
-                if response and response.choices:
-                    return response.choices[0].message.content
+                payload = {
+                    "model": Config.AI_MODEL,
+                    "messages": [{"role": "system", "content": self.SYSTEM_PROMPT}, {"role": "user", "content": user_prompt}],
+                    "temperature": Config.TEMPERATURE,
+                    "max_tokens": Config.MAX_TOKENS,
+                }
+                response = requests.post(self.endpoint, headers=self.headers, data=json.dumps(payload), timeout=Config.REQUEST_TIMEOUT)
+                if response.status_code == 200:
+                    return response.json()['choices'][0]['message']['content']
+                elif response.status_code == 429:
+                    time.sleep(Config.RATE_LIMIT_DELAY)
+                else:
+                    logger.error(f"API Error: {response.status_code}")
             except Exception as e:
                 logger.error(f"Attempt {attempt} failed: {e}")
-                retry_delay *= 2
+                time.sleep(Config.INITIAL_RETRY_DELAY * attempt)
         return None
 
 # ==========================================
-# 🗂️ WIKIDATA EXTRACTOR - UZBEK MAPPING
+# 🗂️ WIKIDATA EXTRACTOR
 # ==========================================
 class WikidataExtractor:
-    """Extracts structured data from Wikidata using Uzbek keys"""
-
     @staticmethod
     def extract(item: Any) -> Optional[Dict[str, Any]]:
         try:
             item.get()
+            nomi = item.labels.get('uz') or item.labels.get('en')
+            if not nomi: return None
 
-            labels = item.labels
-            nomi = labels.get('uz') or labels.get('en')
-
-            if not nomi:
-                return None
-
-            # Get administrative hierarchy
             hierarchy = WikidataExtractor._get_hierarchy(item)
-
-            # Extract basic claims
             pop = WikidataExtractor._get_claim_value(item, 'P1082', int)
             area = WikidataExtractor._get_claim_value(item, 'P2046', float)
             elev = WikidataExtractor._get_claim_value(item, 'P2044', float)
             postal = WikidataExtractor._get_claim_value(item, 'P281', str)
-            asl_nomi = WikidataExtractor._get_claim_value(item, 'P1705', str)
-
-            # Settlement type (mavqe)
-            mavqe = WikidataExtractor._get_settlement_type(item)
-
-            coords_lat, coords_lon = WikidataExtractor._get_coordinates(item)
-            koordinatalar = f"{coords_lat}, {coords_lon}" if coords_lat and coords_lon else None
+            mavqe = WikidataExtractor._get_mavqe(item)
+            lat, lon = WikidataExtractor._get_coords(item)
 
             return {
-                'nomi': nomi,
-                'asl_nomi': asl_nomi,
-                'mavqe': mavqe,
-                'mamlakat': Config.COUNTRY_NAME,
-                'mintaqa': hierarchy.get('mintaqa'),
-                'tuman': hierarchy.get('tuman'),
-                'aholi': pop,
-                'maydon': area,
-                'balandlik': elev,
-                'pochta_indekslari': postal,
-                'koordinatalar': koordinatalar,
-                'lat_deg': int(coords_lat) if coords_lat is not None else None,
-                'lat_min': int((abs(coords_lat) - abs(int(coords_lat))) * 60) if coords_lat is not None else None,
-                'lon_deg': int(coords_lon) if coords_lon is not None else None,
-                'lon_min': int((abs(coords_lon) - abs(int(coords_lon))) * 60) if coords_lon is not None else None,
+                'nomi': nomi, 'mavqe': mavqe, 'mintaqa': hierarchy.get('mintaqa'),
+                'tuman': hierarchy.get('tuman'), 'aholi': pop, 'maydon': area,
+                'balandlik': elev, 'koordinatalar': f"{lat}, {lon}" if lat else None,
+                'pochta': postal
             }
-
-        except Exception as e:
-            logger.error(f"Extraction failed: {e}")
-            return None
+        except: return None
 
     @staticmethod
-    def _get_settlement_type(item: Any) -> str:
-        """Map P31 to Uzbek mavqe"""
-        if 'P31' not in item.claims:
-            return "aholi punkti"
-
-        try:
-            p31_item = item.claims['P31'][0].getTarget()
-            qid = p31_item.id
-
-            mapping = {
-                'Q532': 'qishloq',
-                'Q486972': 'aholi punkti',
-                'Q515': 'shahar',
-                'Q123705': 'mahalla',
-                'Q16110': 'shahar tipi qishloq',
-            }
-            return mapping.get(qid, "aholi punkti")
-        except:
-            return "aholi punkti"
+    def _get_mavqe(item: Any) -> str:
+        if 'P31' not in item.claims: return "aholi punkti"
+        qid = item.claims['P31'][0].getTarget().id
+        mapping = {'Q532': 'qishloq', 'Q486972': 'aholi punkti', 'Q515': 'shahar', 'Q123705': 'mahalla'}
+        return mapping.get(qid, "aholi punkti")
 
     @staticmethod
     def _get_hierarchy(item: Any) -> Dict[str, str]:
-        """Trace P131 hierarchy for mintaqa and tuman"""
         hierarchy = {}
         curr = item
-        depth = 0
-
-        while 'P131' in curr.claims and depth < 5:
-            try:
-                parent = curr.claims['P131'][0].getTarget()
-                parent.get()
-
-                label = parent.labels.get('uz') or parent.labels.get('en')
-
-                # Check if it's a Voivodeship (mintaqa) or Powiat (tuman)
-                # In Poland: Q15008 (voivodeship), Q22714 (powiat)
-                if 'P31' in parent.claims:
-                    type_qid = parent.claims['P31'][0].getTarget().id
-                    if type_qid == 'Q15008':
-                        hierarchy['mintaqa'] = label
-                    elif type_qid == 'Q22714':
-                        hierarchy['tuman'] = label
-
-                # Fallback if types not clearly marked
-                if not hierarchy.get('mintaqa') and 'voyevodligi' in label.lower():
-                    hierarchy['mintaqa'] = label
-
-                curr = parent
-                depth += 1
-            except:
-                break
-
+        for _ in range(5):
+            if 'P131' not in curr.claims: break
+            parent = curr.claims['P131'][0].getTarget()
+            parent.get()
+            label = parent.labels.get('uz') or parent.labels.get('en')
+            if 'P31' in parent.claims:
+                type_qid = parent.claims['P31'][0].getTarget().id
+                if type_qid == 'Q15008': hierarchy['mintaqa'] = label
+                elif type_qid == 'Q22714': hierarchy['tuman'] = label
+            curr = parent
         return hierarchy
 
     @staticmethod
-    def _get_claim_value(item: Any, prop: str, converter=None):
-        if prop not in item.claims:
-            return None
+    def _get_claim_value(item, prop, converter=None):
+        if prop not in item.claims: return None
         try:
             target = item.claims[prop][0].getTarget()
-            if hasattr(target, 'amount'):
-                value = target.amount
-                return converter(value) if converter else value
-            return converter(target) if converter else target
-        except:
-            return None
+            val = target.amount if hasattr(target, 'amount') else target
+            return converter(val) if converter else val
+        except: return None
 
     @staticmethod
-    def _get_coordinates(item: Any) -> Tuple[Optional[float], Optional[float]]:
-        if 'P625' not in item.claims:
-            return None, None
+    def _get_coords(item):
+        if 'P625' not in item.claims: return None, None
         try:
-            coord = item.claims['P625'][0].getTarget()
-            return coord.lat, coord.lon
-        except:
-            return None, None
+            c = item.claims['P625'][0].getTarget()
+            return c.lat, c.lon
+        except: return None, None
 
 # ==========================================
-# 🚀 MAIN BOT ENGINE
+# 🚀 BOT ENGINE
 # ==========================================
 class UzbekWikiBot:
-    """Main bot orchestrator - System Integrity Preserved"""
-
     def __init__(self):
         Config.validate()
         self.builder = ArticleBuilder()
         self.fetcher = EnglishWikiFetcher()
         self.extractor = WikidataExtractor()
-
-        self._cleanup_lock_files()
-
         self.site = pywikibot.Site('uz', 'wikipedia')
         self.repo = self.site.data_repository()
-
-        if not Config.SIMULATION_OR_DRAFT_MODE:
-            try:
-                self.site.login()
-                logger.info("✅ Logged in to uz.wikipedia.org")
-            except Exception as e:
-                logger.warning(f"Login warning: {e}")
-        else:
-            logger.info("🧪 DRAFT MODE ENABLED")
-
-    def _cleanup_lock_files(self):
-        """Remove Pywikibot lock files"""
-        for pattern in ["*.lwp", "pywikibot-*.lwp", "apicache-*.sqlite3"]:
-            for file in glob.glob(pattern):
-                try:
-                    os.remove(file)
-                except:
-                    pass
-
-    def _get_page_title(self, name: str) -> str:
-        """Determine page title based on mode (SYSTEM INTEGRITY)"""
-        if Config.SIMULATION_OR_DRAFT_MODE:
-            return f"Foydalanuvchi:{Config.BOT_USERNAME}/Qoralama/{name}"
-        return name
+        if not Config.SIMULATION_OR_DRAFT_MODE: self.site.login()
 
     def run(self):
-        """Main execution loop (SYSTEM INTEGRITY PRESERVED)"""
-        logger.info("=" * 60)
-        logger.info(f"🤖 UZBEK WIKI BOT v25.0 (LINGUISTIC EXCELLENCE)")
-        logger.info(f"📍 Target: {Config.COUNTRY_NAME} (Q{Config.COUNTRY_QID})")
-        logger.info(f"🎯 Max: {Config.MAX_ARTICLES} | Draft: {Config.SIMULATION_OR_DRAFT_MODE}")
-        logger.info(f"🔤 Orthography: ENABLED | 📚 References: PROTECTED")
-        logger.info("=" * 60)
-
-        # SPARQL QUERY - PRESERVED (SYSTEM INTEGRITY)
-        query = f"""
-        SELECT DISTINCT ?item WHERE {{
-          ?item wdt:P31/wdt:P279* wd:Q486972;
-                wdt:P17 wd:{Config.COUNTRY_QID}.
-        }}
-        LIMIT 100
-        """
-
+        query = f"SELECT DISTINCT ?item WHERE {{ ?item wdt:P31/wdt:P279* wd:Q486972; wdt:P17 wd:{Config.COUNTRY_QID}. }}"
         generator = pagegenerators.WikidataSPARQLPageGenerator(query, site=self.repo)
-
         count = 0
-        skipped = 0
-        failed = 0
-
         for item in generator:
-            if count >= Config.MAX_ARTICLES:
-                break
+            if count >= Config.MAX_ARTICLES: break
+            data = self.extractor.extract(item)
+            if not data: continue
 
-            try:
-                # WIKIDATA EXTRACTION - PRESERVED (SYSTEM INTEGRITY)
-                data = self.extractor.extract(item)
-                if not data:
-                    skipped += 1
-                    continue
+            page = pywikibot.Page(self.site, self._get_title(data['nomi']))
+            if page.exists(): continue
 
-                nomi = data['nomi']
-                logger.info(f"\n{'=' * 60}")
-                logger.info(f"[{count + 1}] {nomi} ({item.id})")
+            lead_text, en_title, img = self.fetcher.get_lead_wikitext(item)
+            if not lead_text: continue
 
-                page_title = self._get_page_title(nomi)
-                page = pywikibot.Page(self.site, page_title)
-
-                if page.exists():
-                    logger.info(f"⭐️ SKIP: Already exists")
-                    skipped += 1
-                    continue
-
-                # ENHANCED: Fetch wikitext + image
-                english_wikitext, english_title, image_filename = self.fetcher.get_full_wikitext(item)
-
-                if not english_wikitext:
-                    logger.info(f"⭐️ SKIP: No English source")
-                    skipped += 1
-                    continue
-
-                logger.info(f"📖 Source: en:{english_title} ({len(english_wikitext)} chars)")
-                if image_filename:
-                    logger.info(f"📸 Image: {image_filename}")
-
-                # ENHANCED: Build article via ArticleBuilder
-                uzbek_article = self.builder.build_article(
-                    data, english_wikitext, english_title, image_filename
-                )
-
-                if not uzbek_article:
-                    logger.error(f"❌ FAIL: Generation failed")
-                    failed += 1
-                    continue
-
-                # FINAL ORTHOGRAPHY PASS (safety layer)
-                uzbek_article = UzbekOrthographyFixer.fix_orthography(uzbek_article)
-
-                self._save_article(page, uzbek_article, english_title, nomi)
+            article = self.builder.build_article(data, lead_text, en_title, img)
+            if article:
+                page.text = article
+                page.save(summary=f"Bot: en:{en_title} tarjimasi", bot=True)
                 count += 1
+                time.sleep(Config.EDIT_DELAY)
 
-            except KeyboardInterrupt:
-                logger.critical("⚠️ INTERRUPTED")
-                break
-            except Exception as e:
-                logger.error(f"💥 ERROR: {type(e).__name__}: {e}")
-                failed += 1
+    def _get_title(self, name):
+        return f"Foydalanuvchi:{Config.BOT_USERNAME}/Qoralama/{name}" if Config.SIMULATION_OR_DRAFT_MODE else name
 
-        logger.info("\n" + "=" * 60)
-        logger.info(f"📊 STATISTICS")
-        logger.info(f"✅ Created: {count} | ⭐️ Skipped: {skipped} | ❌ Failed: {failed}")
-        logger.info(f"📄 Log: {Config.LOG_FILE}")
-        logger.info("=" * 60)
-
-    def _save_article(self, page, content: str, source: str, name: str):
-        """Save article (SYSTEM INTEGRITY PRESERVED)"""
-        try:
-            page.text = content
-
-            summary = f"Bot: Ingliz Vikipediyadan tarjima ([[en:{source}]])"
-            if Config.SIMULATION_OR_DRAFT_MODE:
-                summary = f"Qoralama: {summary}"
-
-            page.save(summary=summary, bot=True, minor=False)
-            logger.info(f"✅ SAVED: {page.title()}")
-
-            # EDIT DELAY - PRESERVED (SYSTEM INTEGRITY)
-            time.sleep(Config.EDIT_DELAY)
-
-        except pywikibot.exceptions.CaptchaError:
-            logger.critical("🛑 CAPTCHA - Manual intervention required")
-            sys.exit(1)
-        except pywikibot.exceptions.EditConflictError:
-            logger.error("⚠️ Edit conflict - skipping")
-        except pywikibot.exceptions.SpamblacklistError as e:
-            logger.error(f"⚠️ Spam blacklist: {e}")
-        except pywikibot.exceptions.LockedPageError:
-            logger.error("⚠️ Page locked")
-        except Exception as e:
-            logger.error(f"❌ Save failed: {e}")
-            raise
-
-# ==========================================
-# 🎬 ENTRY POINT
-# ==========================================
 if __name__ == "__main__":
-    try:
-        bot = UzbekWikiBot()
-        bot.run()
+    try: UzbekWikiBot().run()
     except Exception as e:
-        logger.critical(f"💀 FATAL: {e}")
+        logger.critical(f"Fatal: {e}")
         sys.exit(1)
