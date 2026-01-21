@@ -36,6 +36,12 @@ class Config:
     SIMULATION_OR_DRAFT_MODE = False
     BOT_USERNAME = "DanikBotUZ"
 
+    # NEW: Interactive and Local Export Settings
+    DRAFT_SANDBOX_PAGE = "Foydalanuvchi:The Tarjimon/qumloq"
+    ENABLE_INTERACTIVE_MODE = True
+    LOCAL_EXPORT_ENABLED = False
+    LOCAL_EXPORT_ROOT = Path("articles_export")
+
     COUNTRY_QID = 'Q36'
     COUNTRY_NAME = 'Polsha'
     MAX_ARTICLES = 1
@@ -531,6 +537,25 @@ class UzbekWikiBot:
             return f"Foydalanuvchi:{Config.BOT_USERNAME}/Qoralama/{name}"
         return name
 
+    def _save_locally(self, content: str, name: str, region: Optional[str] = None):
+        """Save article to local file system (NEW FUNCTIONALITY)"""
+        try:
+            # Create subfolder structure: ROOT / Region / Name.txt
+            safe_region = "".join([c for c in (region or "NoRegion") if c.isalnum() or c in (' ', '_', '-')]).strip()
+            safe_name = "".join([c for c in name if c.isalnum() or c in (' ', '_', '-')]).strip()
+
+            target_dir = Config.LOCAL_EXPORT_ROOT / safe_region
+            target_dir.mkdir(parents=True, exist_ok=True)
+
+            file_path = target_dir / f"{safe_name}.txt"
+
+            with open(file_path, 'w', encoding='utf-8') as f:
+                f.write(content)
+
+            logger.info(f"💾 LOCAL SAVE: {file_path}")
+        except Exception as e:
+            logger.error(f"❌ Local save failed: {e}")
+
     def run(self):
         """Main execution loop (SYSTEM INTEGRITY PRESERVED)"""
         logger.info("=" * 60)
@@ -603,8 +628,44 @@ class UzbekWikiBot:
                 # FINAL ORTHOGRAPHY PASS (safety layer)
                 uzbek_article = UzbekOrthographyFixer.fix_orthography(uzbek_article)
 
-                self._save_article(page, uzbek_article, english_title, name)
-                count += 1
+                # --- NEW FUNCTIONALITY START ---
+
+                # 1. LOCAL EXPORT (if enabled)
+                if Config.LOCAL_EXPORT_ENABLED:
+                    self._save_locally(uzbek_article, name, data.get('region'))
+
+                # 2. INTERACTIVE WIKI PUBLISHING
+                if Config.ENABLE_INTERACTIVE_MODE:
+                    # Save to Sandbox First
+                    logger.info(f"📝 Saving draft to sandbox: {Config.DRAFT_SANDBOX_PAGE}")
+                    sandbox_page = pywikibot.Page(self.site, Config.DRAFT_SANDBOX_PAGE)
+                    self._save_article(sandbox_page, uzbek_article, english_title, name, is_draft=True)
+
+                    # Prompt User
+                    choice = pywikibot.input_choice(
+                        f"Article '{name}' saved to sandbox. Publish to main namespace?",
+                        [('Yes', 'y'), ('No', 'n'), ('Skip', 's')],
+                        default='y'
+                    )
+
+                    if choice == 'y':
+                        self._save_article(page, uzbek_article, english_title, name)
+                        count += 1
+                    elif choice == 'n':
+                        logger.info(f"✅ Article '{name}' left in sandbox.")
+                        count += 1
+                    else:
+                        logger.info(f"⏭️ Skipped '{name}'.")
+                        skipped += 1
+                elif not Config.LOCAL_EXPORT_ENABLED:
+                    # Standard direct publishing (only if not in local-only mode)
+                    self._save_article(page, uzbek_article, english_title, name)
+                    count += 1
+                else:
+                    # Local export only mode
+                    count += 1
+
+                # --- NEW FUNCTIONALITY END ---
 
             except KeyboardInterrupt:
                 logger.critical("⚠️ INTERRUPTED")
@@ -619,14 +680,17 @@ class UzbekWikiBot:
         logger.info(f"📄 Log: {Config.LOG_FILE}")
         logger.info("=" * 60)
 
-    def _save_article(self, page, content: str, source: str, name: str):
+    def _save_article(self, page, content: str, source: str, name: str, is_draft: bool = False):
         """Save article (SYSTEM INTEGRITY PRESERVED)"""
         try:
             page.text = content
 
-            summary = f"Bot: Ingliz Vikipediyadan tarjima ([[en:{source}]])"
-            if Config.SIMULATION_OR_DRAFT_MODE:
-                summary = f"Qoralama: {summary}"
+            if is_draft:
+                summary = f"Bot: Qoralama tarjima (Original: [[en:{source}]]) - {name}"
+            else:
+                summary = f"Bot: Ingliz Vikipediyadan tarjima ([[en:{source}]])"
+                if Config.SIMULATION_OR_DRAFT_MODE:
+                    summary = f"Qoralama: {summary}"
 
             page.save(summary=summary, bot=True, minor=False)
             logger.info(f"✅ SAVED: {page.title()}")
