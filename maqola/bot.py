@@ -223,7 +223,7 @@ class EnglishWikiFetcher:
     def _extract_image(wikitext: str) -> Optional[str]:
         """
         Extract main image from English infobox
-        Searches for: image_skyline, image, image_map, etc.
+        Searches for: image_skyline, image, image_photo, photo
         """
         # Patterns to search for image parameters in infoboxes
         image_patterns = [
@@ -238,9 +238,9 @@ class EnglishWikiFetcher:
             if match:
                 image_name = match.group(1).strip()
 
-                # Clean up the image name
-                image_name = re.sub(r'\[\[File:', '', image_name, flags=re.IGNORECASE)
-                image_name = re.sub(r'\[\[Image:', '', image_name, flags=re.IGNORECASE)
+                # Clean up the image name: remove File:, Image:, Fayl:
+                image_name = re.sub(r'\[\[(?:File|Image|Fayl):', '', image_name, flags=re.IGNORECASE)
+                image_name = re.sub(r'(?:File|Image|Fayl):', '', image_name, flags=re.IGNORECASE)
                 image_name = re.sub(r'\]\].*$', '', image_name)
                 image_name = re.sub(r'\|.*$', '', image_name)
                 image_name = image_name.strip()
@@ -278,44 +278,111 @@ class TextSanitizer:
         return text
 
 # ==========================================
-# 🤖 AI TRANSLATOR - REFERENCE PRESERVATION
+# 🤖 ARTICLE BUILDER - ACADEMIC UZBEK SYNTHESIS
 # ==========================================
-class AITranslator:
-    """Translates with STRICT reference preservation and grammar rules"""
+class ArticleBuilder:
+    """Generates articles with STRICT reference preservation and academic grammar"""
 
-    SYSTEM_PROMPT = """# 🚨 UZBEK WIKIPEDIA TRANSLATION PROTOCOL V5.0
+    SYSTEM_PROMPT = """# 🚨 PROTOCOL: UZBEK WIKIPEDIA SUPREMACY (V28.0)
+# ROLE: SENIOR MEDIAWIKI ARCHITECT (UZBEKISTAN NATIONAL ENCYCLOPEDIA)
 
-You are a PROFESSIONAL COMPUTATIONAL LINGUIST specializing in Academic Uzbek.
+You are a PROFESSIONAL COMPUTATIONAL LINGUIST specializing in High-Level Academic Uzbek.
 
-## 🎯 MISSION: 2-3 SENTENCES ONLY
-- Output: EXACTLY 2 to 3 short, dense, high-quality sentences.
-- Never exceed 3 sentences.
-- Style: "Featured Snippet" style - fast to read, 100% accurate.
-- Tone: Academic, scientific, precise.
+## 🏛️ MODULE 1: THE PERFECT UZBEK INFOBOX (BILGIQUTI)
+You MUST map all English data to the official 'Bilgiquti aholi punkti' template.
+EXACT TEMPLATE START:
+{{Bilgiquti aholi punkti
+| mavqe                      =
+| nomi                       =
+| asl nomi                   =
+| tasvir                     =
+| qaram                      =
+| mamlakat                   =
+| gerb                       =
+| bayroq                     =
+| gerb tarifi                =
+| bayroq tarifi              =
+| gerb eni                   =
+| bayroq eni                 =
+| lat_dir = | lat_deg = | lat_min = | lat_sec =
+| lon_dir = | lon_deg = | lon_min = | lon_sec =
+| CoordAddon                 =
+| CoordScale                 =
+| mamlakat xaritasi oʻlchami =
+| mintaqa xaritasi oʻlchami  =
+| tuman xaritasi oʻlchami    =
+| mintaqa turi               =
+| mintaqa                    =
+| jadvalda mintaqa           =
+| tuman turi                 =
+| tuman                      =
+| tuman 2                    =
+| tuman 3                    =
+| tuman 4                    =
+| tuman 5                    =
+| jadvalda tuman             =
+| jadvalda tuman 2           =
+| jadvalda tuman 3           =
+| jadvalda tuman 4           =
+| jadvalda tuman 5           =
+| jamoat turi                =
+| jamoat                     =
+| jadvalda jamoat            =
+| ichki bolinishi            =
+| rahbar turi                =
+| rahbar                     =
+| asos solingan              =
+| ilk eslatilishi            =
+| avvalgi nomlari            =
+| qachondan beri             =
+| maydon                     =
+| balandlik turi             =
+| AP markazi balandligi      =
+| iqlim                      =
+| rasmiy til                 =
+| aholi                      =
+| sanalgan yil               =
+| zichlik                    =
+| aglomeratsiya              =
+| milliy tarkib              =
+| konfessiyaviy tarkib       =
+| etnoxoronim                =
+| vaqt mintaqasi             =
+| DST                        =
+| telefon kodi               =
+| pochta indekslari          =
+| avtomobil kodi             =
+| identifikator turi         =
+| raqamli identifikator      =
+| vebsayt                    =
+| sayt tili                  =
+}}
 
-## 📜 CRITICAL RULE #1: REFERENCE PRESERVATION (NON-NEGOTIABLE)
-**REFERENCES ARE SACRED - NEVER DELETE OR MODIFY**
-Every <ref>...</ref> tag from English MUST appear in the EXACT same position in Uzbek.
-- Keep <ref> tags EXACTLY as they appear in English.
-- Do NOT translate content INSIDE <ref> tags.
-- If English has ==References==, convert to == Manbalar == with {{manbalar}}.
+## 🔬 MODULE 2: PROSE & LINGUISTICS
+- **First Sentence:** '''{nomi}''' — [description in Academic Uzbek].
+- **References:** Every fact MUST have a <ref> tag. Preserve ALL <ref> tags from English source.
+- **Orthography:** Ensure oʻ and gʻ use the correct Unicode modifier (U+02BB).
+- **No Chatter:** Output ONLY the RAW MediaWiki source code.
 
-## 📜 CRITICAL RULE #2: UZBEK LATIN ORTHOGRAPHY
-- Use: oʻ (not o' or o’)
-- Use: gʻ (not g' or g’)
-- Use the Unicode modifier letter ʻ (U+02BB).
+# ✍️ MODULE: ACADEMIC UZBEK SYNTHESIS (V29.0)
+## 🏛️ LINGUISTIC COMMANDS (STRICT):
+1. **TERMINATION:** Every article MUST start with the "Punctuation-Dash" definition style:
+   - FORMAT: '''{nomi}''' — [Location/Administrative status] tarkibiga kiruvchi [Entity type]dir.
+2. **SYNTAX (SOV):** The verb must be the LAST word.
+3. **DICTIONARY CONTROL:**
+   - Use "tashkil etmoq" or "vujudga kelgan" for historical facts.
+   - Use "maʼlumotlarga koʻra" when citing population.
+   - Use "maʼmuriy-hududiy birlik" for administrative status.
+4. **THE ORTHOGRAPHY SHIELD:** Use U+02BB modifier for oʻ and gʻ. Ensure "oʻz" is correct.
+5. **CONCISENESS:**
+   - Sentence 1: Definition + Precise location + Administrative hierarchy.
+   - Sentence 2: Key historical fact.
+   - Sentence 3: Current status or demographic highlight with <ref>.
 
-## 📜 CRITICAL RULE #3: SOV GRAMMAR (Subject-Object-Verb)
-**VERB MUST BE AT THE END OF SENTENCE**
-- First sentence: '''[Name]''' — [Country]ning [region] qismida joylashgan [entity type]dir.
-
-## 📜 CRITICAL RULE #4: INFOBOX & FORMATTING
-- Convert English infobox to {{Bilgiquti aholi punkti}}.
-- Keep [[internal links]], '''bold''', ''italic''.
-- Add image: | tasvir = filename.jpg
-- End with [[Turkum:...]] categories.
-
-NO preamble. NO commentary. START with infobox."""
+## 🧹 MODULE 3: SYSTEM INTEGRITY
+- DELETE non-existent templates like {{Authority control}} or {{TERYT}}.
+- Keep ONLY working references.
+- Place Categories at the absolute bottom."""
 
     def __init__(self):
         try:
@@ -328,53 +395,54 @@ NO preamble. NO commentary. START with infobox."""
             logger.critical(f"Failed to initialize AI client: {e}")
             raise
 
-    def translate_full_article(self,
-                              wikidata: Dict[str, Any],
-                              english_wikitext: str,
-                              english_title: str,
-                              image_filename: Optional[str] = None) -> Optional[str]:
-        """Translate COMPLETE English wikitext to Uzbek"""
+    def build_article(self,
+                      maʼlumotlar: Dict[str, Any],
+                      manba_matni: str,
+                      manba_nomi: str,
+                      tasvir_nomi: Optional[str] = None) -> Optional[str]:
+        """Generate COMPLETE article from source data"""
 
-        name = wikidata['name']
-        region = wikidata.get('region', 'Poland')
+        nomi = maʼlumotlar['nomi']
 
         # Count references for validation
-        ref_count = len(re.findall(r'<ref[^>]*>.*?</ref>', english_wikitext, re.DOTALL))
+        ref_count = len(re.findall(r'<ref[^>]*>.*?</ref>', manba_matni, re.DOTALL))
         logger.info(f"📚 Source has {ref_count} references to preserve")
 
-        # Build context
-        context_data = f"""WIKIDATA CONTEXT:
-- Name: {name}
-- Region: {region}
-- Country: {Config.COUNTRY_NAME}
-- Population: {wikidata.get('pop', 'N/A')}
-- Area: {wikidata.get('area', 'N/A')} km²
-- Coordinates: {wikidata.get('coords_lat', 'N/A')}, {wikidata.get('coords_lon', 'N/A')}
-- Postal: {wikidata.get('postal', 'N/A')}
-- Main Image: {image_filename if image_filename else 'N/A'}
+        # Build context using UZBEK parameter names
+        context_data = f"""WIKIDATA CONTEXT (UZBEK MAPPING):
+- nomi: {nomi}
+- mavqe: {maʼlumotlar.get('mavqe', 'aholi punkti')}
+- mamlakat: {maʼlumotlar.get('mamlakat', Config.COUNTRY_NAME)}
+- mintaqa: {maʼlumotlar.get('mintaqa', 'N/A')}
+- tuman: {maʼlumotlar.get('tuman', 'N/A')}
+- aholi: {maʼlumotlar.get('aholi', 'N/A')}
+- maydon: {maʼlumotlar.get('maydon', 'N/A')} km²
+- koordinatalar: {maʼlumotlar.get('koordinatalar', 'N/A')}
+- pochta indekslari: {maʼlumotlar.get('pochta_indekslari', 'N/A')}
+- tasvir: {tasvir_nomi if tasvir_nomi else 'N/A'}
 """
 
         user_prompt = f"""{context_data}
 
-SOURCE: en.wikipedia.org/wiki/{english_title.replace(' ', '_')}
+SOURCE: en.wikipedia.org/wiki/{manba_nomi.replace(' ', '_')}
 
 ENGLISH WIKITEXT (CONTAINS {ref_count} REFERENCES):
-{english_wikitext}
+{manba_matni}
 
 ---
 
-TRANSLATION INSTRUCTIONS:
-1. **LIMIT: MAX 2-3 SHORT SENTENCES.** No more.
-2. **REFERENCES:** Preserve ALL {ref_count} <ref> tags in the text.
-3. **INFOBOX:** Use {{{{Bilgiquti aholi punkti}}}}. Set `| tasvir = {image_filename if image_filename else ''}`.
-4. **GRAMMAR:** Strict SOV. Orthography: oʻ, gʻ.
-5. **CATEGORIES:** Add [[Turkum:{Config.COUNTRY_NAME} shaharlari]].
+EXECUTION:
+1. Generate the article according to PROTOCOL V28.0 and V29.0.
+2. Ensure ALL {ref_count} references are preserved.
+3. Use the mapping: name -> nomi, settlement_type -> mavqe, subdivision_name -> mamlakat, subdivision_name1 -> mintaqa, subdivision_name2 -> tuman.
+4. Set `| tasvir = {tasvir_nomi if tasvir_nomi else ''}` in the infobox.
+5. Add [[Turkum:{Config.COUNTRY_NAME} aholi punktlari]] at the end.
 
 OUTPUT RAW WIKITEXT ONLY.
 
-BEGIN TRANSLATION:"""
+BEGIN:"""
 
-        logger.info(f"🤖 Translating via {Config.AI_MODEL}...")
+        logger.info(f"🤖 Generating article via {Config.AI_MODEL}...")
         result = self._call_api_with_retry(user_prompt)
 
         if result:
@@ -389,7 +457,7 @@ BEGIN TRANSLATION:"""
 
             return fixed
 
-        logger.error("❌ Translation failed")
+        logger.error("❌ Generation failed")
         return None
 
     def _call_api_with_retry(self, user_prompt: str) -> Optional[str]:
@@ -417,10 +485,10 @@ BEGIN TRANSLATION:"""
         return None
 
 # ==========================================
-# 🗂️ WIKIDATA EXTRACTOR
+# 🗂️ WIKIDATA EXTRACTOR - UZBEK MAPPING
 # ==========================================
 class WikidataExtractor:
-    """Extracts structured data from Wikidata"""
+    """Extracts structured data from Wikidata using Uzbek keys"""
 
     @staticmethod
     def extract(item: Any) -> Optional[Dict[str, Any]]:
@@ -428,28 +496,43 @@ class WikidataExtractor:
             item.get()
 
             labels = item.labels
-            name = labels.get('uz') or labels.get('en')
+            nomi = labels.get('uz') or labels.get('en')
 
-            if not name:
+            if not nomi:
                 return None
 
-            region = WikidataExtractor._get_region(item)
+            # Get administrative hierarchy
+            hierarchy = WikidataExtractor._get_hierarchy(item)
+
+            # Extract basic claims
             pop = WikidataExtractor._get_claim_value(item, 'P1082', int)
             area = WikidataExtractor._get_claim_value(item, 'P2046', float)
             elev = WikidataExtractor._get_claim_value(item, 'P2044', float)
             postal = WikidataExtractor._get_claim_value(item, 'P281', str)
+            asl_nomi = WikidataExtractor._get_claim_value(item, 'P1705', str)
+
+            # Settlement type (mavqe)
+            mavqe = WikidataExtractor._get_settlement_type(item)
 
             coords_lat, coords_lon = WikidataExtractor._get_coordinates(item)
+            koordinatalar = f"{coords_lat}, {coords_lon}" if coords_lat and coords_lon else None
 
             return {
-                'name': name,
-                'region': region,
-                'pop': pop,
-                'area': area,
-                'elev': elev,
-                'postal': postal,
-                'coords_lat': coords_lat,
-                'coords_lon': coords_lon
+                'nomi': nomi,
+                'asl_nomi': asl_nomi,
+                'mavqe': mavqe,
+                'mamlakat': Config.COUNTRY_NAME,
+                'mintaqa': hierarchy.get('mintaqa'),
+                'tuman': hierarchy.get('tuman'),
+                'aholi': pop,
+                'maydon': area,
+                'balandlik': elev,
+                'pochta_indekslari': postal,
+                'koordinatalar': koordinatalar,
+                'lat_deg': int(coords_lat) if coords_lat else None,
+                'lat_min': int((abs(coords_lat) - abs(int(coords_lat))) * 60) if coords_lat else None,
+                'lon_deg': int(coords_lon) if coords_lon else None,
+                'lon_min': int((abs(coords_lon) - abs(int(coords_lon))) * 60) if coords_lon else None,
             }
 
         except Exception as e:
@@ -457,15 +540,59 @@ class WikidataExtractor:
             return None
 
     @staticmethod
-    def _get_region(item: Any) -> Optional[str]:
-        if 'P131' not in item.claims:
-            return None
+    def _get_settlement_type(item: Any) -> str:
+        """Map P31 to Uzbek mavqe"""
+        if 'P31' not in item.claims:
+            return "aholi punkti"
+
         try:
-            region_item = item.claims['P131'][0].getTarget()
-            region_item.get()
-            return region_item.labels.get('uz') or region_item.labels.get('en')
+            p31_item = item.claims['P31'][0].getTarget()
+            qid = p31_item.id
+
+            mapping = {
+                'Q532': 'qishloq',
+                'Q486972': 'aholi punkti',
+                'Q515': 'shahar',
+                'Q123705': 'mahalla',
+                'Q16110': 'shahar tipi qishloq',
+            }
+            return mapping.get(qid, "aholi punkti")
         except:
-            return None
+            return "aholi punkti"
+
+    @staticmethod
+    def _get_hierarchy(item: Any) -> Dict[str, str]:
+        """Trace P131 hierarchy for mintaqa and tuman"""
+        hierarchy = {}
+        curr = item
+        depth = 0
+
+        while 'P131' in curr.claims and depth < 5:
+            try:
+                parent = curr.claims['P131'][0].getTarget()
+                parent.get()
+
+                label = parent.labels.get('uz') or parent.labels.get('en')
+
+                # Check if it's a Voivodeship (mintaqa) or Powiat (tuman)
+                # In Poland: Q15008 (voivodeship), Q22714 (powiat)
+                if 'P31' in parent.claims:
+                    type_qid = parent.claims['P31'][0].getTarget().id
+                    if type_qid == 'Q15008':
+                        hierarchy['mintaqa'] = label
+                    elif type_qid == 'Q22714':
+                        hierarchy['tuman'] = label
+
+                # Fallback if types not clearly marked
+                if not hierarchy.get('mintaqa') and 'voyevodligi' in label.lower():
+                    hierarchy['mintaqa'] = label
+
+                curr = parent
+                depth += 1
+            except:
+                break
+
+        return hierarchy
 
     @staticmethod
     def _get_claim_value(item: Any, prop: str, converter=None):
@@ -498,7 +625,7 @@ class UzbekWikiBot:
 
     def __init__(self):
         Config.validate()
-        self.translator = AITranslator()
+        self.builder = ArticleBuilder()
         self.fetcher = EnglishWikiFetcher()
         self.extractor = WikidataExtractor()
 
@@ -566,11 +693,11 @@ class UzbekWikiBot:
                     skipped += 1
                     continue
 
-                name = data['name']
+                nomi = data['nomi']
                 logger.info(f"\n{'=' * 60}")
-                logger.info(f"[{count + 1}] {name} ({item.id})")
+                logger.info(f"[{count + 1}] {nomi} ({item.id})")
 
-                page_title = self._get_page_title(name)
+                page_title = self._get_page_title(nomi)
                 page = pywikibot.Page(self.site, page_title)
 
                 if page.exists():
@@ -590,20 +717,20 @@ class UzbekWikiBot:
                 if image_filename:
                     logger.info(f"📸 Image: {image_filename}")
 
-                # ENHANCED: Translate with image info
-                uzbek_article = self.translator.translate_full_article(
+                # ENHANCED: Build article via ArticleBuilder
+                uzbek_article = self.builder.build_article(
                     data, english_wikitext, english_title, image_filename
                 )
 
                 if not uzbek_article:
-                    logger.error(f"❌ FAIL: Translation failed")
+                    logger.error(f"❌ FAIL: Generation failed")
                     failed += 1
                     continue
 
                 # FINAL ORTHOGRAPHY PASS (safety layer)
                 uzbek_article = UzbekOrthographyFixer.fix_orthography(uzbek_article)
 
-                self._save_article(page, uzbek_article, english_title, name)
+                self._save_article(page, uzbek_article, english_title, nomi)
                 count += 1
 
             except KeyboardInterrupt:
