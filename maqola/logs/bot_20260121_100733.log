@@ -1,0 +1,27 @@
+2026-01-21 10:07:33 [INFO] ✅ GitHub Models initialized: meta/Llama-4-Scout-17B-16E-Instruct
+2026-01-21 10:07:37 [INFO] ✅ Logged in to uz.wikipedia.org
+2026-01-21 10:07:37 [INFO] ============================================================
+2026-01-21 10:07:37 [INFO] 🤖 UZBEK WIKI BOT v25.0 (LINGUISTIC EXCELLENCE)
+2026-01-21 10:07:37 [INFO] 📍 Target: Polsha (QQ36)
+2026-01-21 10:07:37 [INFO] 🎯 Max: 1 | Draft: False
+2026-01-21 10:07:37 [INFO] 🔤 Orthography: ENABLED | 📚 References: PROTECTED
+2026-01-21 10:07:37 [INFO] ============================================================
+2026-01-21 10:07:43 [INFO] 
+============================================================
+2026-01-21 10:07:43 [INFO] [1] Dąbrówka Szlachecka (Q9249288)
+2026-01-21 10:07:47 [DEBUG] ✅ Fetched wikitext for 'Dąbrówka Szlachecka' (4237 chars)
+2026-01-21 10:07:47 [DEBUG] 📸 Found image: File:DĄBRÓWKA SZLACHECKA ulica Czeremchowa 01.jpg
+2026-01-21 10:07:47 [INFO] 📖 Source: en:Dąbrówka Szlachecka (4237 chars)
+2026-01-21 10:07:47 [INFO] 📸 Image: File:DĄBRÓWKA SZLACHECKA ulica Czeremchowa 01.jpg
+2026-01-21 10:07:47 [INFO] 📚 Source has 4 references to preserve
+2026-01-21 10:07:47 [INFO] 🤖 Translating via meta/Llama-4-Scout-17B-16E-Instruct...
+2026-01-21 10:07:55 [DEBUG] 🔤 Applying Uzbek orthography corrections...
+2026-01-21 10:07:55 [INFO] ✅ All 4 references preserved
+2026-01-21 10:07:55 [DEBUG] 🔤 Applying Uzbek orthography corrections...
+2026-01-21 10:07:58 [INFO] ✅ SAVED: Dąbrówka Szlachecka
+2026-01-21 10:08:48 [INFO] 
+============================================================
+2026-01-21 10:08:48 [INFO] 📊 STATISTICS
+2026-01-21 10:08:48 [INFO] ✅ Created: 1 | ⭐️ Skipped: 0 | ❌ Failed: 0
+2026-01-21 10:08:48 [INFO] 📄 Log: logs/bot_20260121_100733.log
+2026-01-21 10:08:48 [INFO] ============================================================

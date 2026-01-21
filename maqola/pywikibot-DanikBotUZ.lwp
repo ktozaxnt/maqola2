@@ -1,0 +1,16 @@
+#LWP-Cookies-2.0
+Set-Cookie3: WMF-Last-Access=21-Jan-2026; path="/"; domain=uz.wikipedia.org; path_spec; secure; expires="2026-02-22 00:00:00Z"; HttpOnly=None; version=0
+Set-Cookie3: NetworkProbeLimit=0.001; path="/"; domain=uz.wikipedia.org; path_spec; secure; expires="2026-01-21 04:07:33Z"; SameSite=None; version=0
+Set-Cookie3: uzwikiSession=aff4s1t0dkj7u92gono884m815bnt9ds; path="/"; domain=uz.wikipedia.org; path_spec; secure; discard; HttpOnly=None; SameSite=None; version=0
+Set-Cookie3: uzwiki_BPsession=p6ve4ugq63g6uj4jiu9d2ro064v6se94; path="/"; domain=uz.wikipedia.org; path_spec; secure; discard; HttpOnly=None; version=0
+Set-Cookie3: loginnotify_prevlogins=2026-s6zl56-kcz47o5bzhsltdyuodj5v8959zr0h0g; path="/"; domain=uz.wikipedia.org; path_spec; secure; expires="2026-07-20 03:07:36Z"; HttpOnly=None; version=0
+Set-Cookie3: cpPosIndex=2%401768964856%234a2d0c24b543308d5b8ad97782e6b4dd; path="/"; domain=uz.wikipedia.org; path_spec; secure; expires="2026-01-21 03:07:46Z"; HttpOnly=None; version=0
+Set-Cookie3: UseDC=master; path="/"; domain=uz.wikipedia.org; path_spec; secure; expires="2026-01-21 03:07:46Z"; HttpOnly=None; version=0
+Set-Cookie3: WMF-Last-Access-Global=21-Jan-2026; path="/"; domain=.wikipedia.org; path_spec; domain_dot; secure; expires="2026-02-22 00:00:00Z"; HttpOnly=None; version=0
+Set-Cookie3: GeoIP="RU:KYA:Krasnoyarsk:56.04:92.93:v4"; path="/"; domain=.wikipedia.org; path_spec; domain_dot; secure; discard; version=0
+Set-Cookie3: WMF-Uniq=luiIPjo0m8vGi9R7_WNRjwLvAAEBAFvdy6fqzBpyr1cnvZvCF8nulNRFlZaK-VRt; path="/"; domain=.wikipedia.org; path_spec; domain_dot; secure; expires="2027-01-21 00:00:00Z"; HttpOnly=None; SameSite=None; version=0
+Set-Cookie3: WMF-Last-Access=21-Jan-2026; path="/"; domain=www.wikidata.org; path_spec; secure; expires="2026-02-22 00:00:00Z"; HttpOnly=None; version=0
+Set-Cookie3: NetworkProbeLimit=0.001; path="/"; domain=www.wikidata.org; path_spec; secure; expires="2026-01-21 04:07:34Z"; SameSite=None; version=0
+Set-Cookie3: WMF-Last-Access-Global=21-Jan-2026; path="/"; domain=.wikidata.org; path_spec; domain_dot; secure; expires="2026-02-22 00:00:00Z"; HttpOnly=None; version=0
+Set-Cookie3: GeoIP="RU:KYA:Krasnoyarsk:56.04:92.93:v4"; path="/"; domain=.wikidata.org; path_spec; domain_dot; secure; discard; version=0
+Set-Cookie3: WMF-Uniq=T_QWdv_2c9MMofeXcF7DogLvAAEBAFvdOBCpDHhklmzrdcSlJoSgkuOTBJ74LPZO; path="/"; domain=.wikidata.org; path_spec; domain_dot; secure; expires="2027-01-21 00:00:00Z"; HttpOnly=None; SameSite=None; version=0
