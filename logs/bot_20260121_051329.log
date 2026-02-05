@@ -1,0 +1,7 @@
+2026-01-21 05:13:29 [INFO] ✅ OpenRouter initialized: deepseek/deepseek-r1
+2026-01-21 05:14:07 [DEBUG] ✅ Fetched lead for 'Sierzchowo' (1072 chars)
+2026-01-21 05:14:07 [INFO] 🤖 Generating via deepseek/deepseek-r1...
+2026-01-21 05:16:53 [CRITICAL] Fatal: Edit to page [[uz:Foydalanuvchi:DanikBotUZ/Qoralama/Sierzchowo]] failed:
+ERROR: username for wikipedia:uz is undefined.
+If you have a username for that site, please add a line to user config file (user-config.py) as follows:
+usernames['wikipedia']['uz'] = 'myUsername'

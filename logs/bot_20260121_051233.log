@@ -1,0 +1,2 @@
+2026-01-21 05:12:33 [INFO] ✅ OpenRouter initialized: deepseek/deepseek-r1
+2026-01-21 05:13:21 [CRITICAL] Fatal: HTTPSConnectionPool(host='query.wikidata.org', port=443): Read timed out.
